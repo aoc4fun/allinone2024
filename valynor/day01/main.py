@@ -22,7 +22,7 @@ print(total_distance_1(data))
 
 def total_distance_2(data):
     first,second=parse_data(data)
-    return sum([i*len([j for j in second if j==i]) for i in first])
+    return sum([i*second.count(i) for i in first])
 
 # Part 2
 assert(total_distance_2(sample)==31)
