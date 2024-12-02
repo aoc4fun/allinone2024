@@ -13,37 +13,25 @@ with open("02.txt","r") as f:
 def parse_data(data):
     return [list(map(int, line.split())) for line in data.split("\n")]
 
-def distance(d1,d2):
-    return 0<(d1-d2)<4
+def distance(d1,d2,min,max):
+    return min <= d1-d2 <=max
 
 # Part 1
-def check_upper(line):
-    for i in range(len(line)-1):
-        if not distance(line[i],line[i+1]):
-            return False
-    return True
+def check_increasing_unboundlimit(level,min=1,max=3):
+    return all(distance(level[i],level[i+1],min,max) for i in range(len(level)-1))
+
+def is_safe(level):
+    return check_increasing_unboundlimit(level) or check_increasing_unboundlimit(level[::-1])
 
 def part1(data):
-    return len([line for line in parse_data(data) if check_upper(line) or check_upper(line[::-1])])
+    return len([line for line in parse_data(data) if is_safe(line)])
 
 # Part 2
-def extract_list(data):
-    lists=[data]
-    for extract in range(0,len(data)):
-        lists.append([data[i] for i in range(0,len(data)) if i!=extract])
-    return lists
+def extract_others_lists(data):
+    return [[data[i] for i in range(0,len(data)) if i!=extract] for extract in range(0,len(data))]
 
 def part2(data):
-    counter=0
-    for line in parse_data(data):
-        list_trying=extract_list(line)
-        list_trying2=extract_list(line[::-1])
-        joined_list=[*list_trying,*list_trying2]
-        for list_to_check in joined_list:
-            if check_upper(list_to_check):
-                counter+=1
-                break
-    return counter
+    return len([1 for line in parse_data(data) if any([is_safe(list_to_check) for list_to_check in extract_others_lists(line)])])
 
 assert(part1(sample)==2)
 print(f"Part 1 result : {part1(input_data)}")
