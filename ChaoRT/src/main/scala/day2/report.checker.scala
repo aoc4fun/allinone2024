@@ -1,8 +1,6 @@
 import scala.math._
 import scala.annotation.tailrec
 import scala.io.Source
-import scala.runtime.Statics
-
 
 val sample1 ="""7 6 4 2 1
 1 2 7 8 9
@@ -11,6 +9,8 @@ val sample1 ="""7 6 4 2 1
 8 6 4 4 1
 1 3 6 7 9
 """
+val sampleAsList=sample1.split("\\r?\\n").iterator
+
 @tailrec
 def safe(sign:Int, l:List[Int]):Boolean =
   l match
@@ -26,38 +26,21 @@ def safe(l:List[Int]):Boolean =
     case head::Nil => true
     case head::head2::tail => safe(head2-head, head::head2::tail)
 
+def genWithout(i:Int, l:List[Int]):List[Int] = l.slice(0,i).concat(l.drop(i+1))
 
-def genWithout(i:Int, l:List[Int]):List[Int] =
-  l match
-    case Nil => Nil
-    case head :: tail => if(i==0) then tail else head::genWithout(i-1, tail)
+def possibleCorrecrLists(l:List[Int]):List[List[Int]] = (0 until l.size).map(genWithout(_, l)).toList
 
-def possibleCorrecrLists(l:List[Int]):List[List[Int]] = {
-  val item = 0 until l.size
-  item.map(genWithout(_, l)).toList
-}
+def relaxedSafe(l:List[Int]):Boolean = possibleCorrecrLists(l).exists(safe(_))
 
-def relaxedSafe(l:List[Int]):Boolean =
-  safe(l) || possibleCorrecrLists(l).exists(safe(_))
-
-def splitToList(s:String):List[Int] =
-  s.split("[ ]+").map(_.toInt).toList
-
+def splitToList(s:String):List[Int] = s.split("[ ]+").map(_.toInt).toList
 
 def puzzle1(l:List[String]):Int = puzzle1(l.iterator)
-def puzzle1(l:Iterator[String]):Int = {
-  l.map(splitToList).count(safe)
-}
-val sampleAsList=sample1.split("\\r?\\n").iterator
-
-def puzzle2(l:Iterator[String]):Int = {
-  l.map(splitToList).count(relaxedSafe)
-}
-
+def puzzle1(l:Iterator[String]):Int = l.map(splitToList).count(safe)
 def puzzle1Full():Long =
   val lines = Source.fromFile("..\\..\\ressources\\day2.txt").getLines()
   puzzle1(lines)
 
+def puzzle2(l:Iterator[String]):Int = l.map(splitToList).count(relaxedSafe)
 def puzzle2Full():Long =
   val lines = Source.fromFile("..\\..\\ressources\\day2.txt").getLines()
   puzzle2(lines)
