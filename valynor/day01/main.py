@@ -6,6 +6,7 @@ sample="""3   4
 1   3
 3   9
 3   3"""
+
 with open("01.txt","r") as f:
     puzzle_input=f.read()
 
@@ -18,7 +19,7 @@ def total_distance_1(puzzle_input):
 
 # Part 1
 assert(total_distance_1(sample)==11)
-print(total_distance_1(data))
+print(total_distance_1(puzzle_input))
 
 def total_distance_2(puzzle_input):
     first,second=parse_data(puzzle_input)
