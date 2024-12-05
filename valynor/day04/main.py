@@ -35,8 +35,10 @@ def check_in_direction(data,directionx,directiony,current_objective):
 def check_all_directions(data,current_objective):
     combinaison=list(itertools.product(range(-1,2), range(-1,2)))
     combinaison.remove((0,0))
-    return sum(check_in_direction(data,x,y,current_objective)
-        for x,y in combinaison)
+    return sum(
+        check_in_direction(data,x,y,current_objective)
+        for x,y in combinaison
+    )
 
 def checkMAS(data):
     return sum(
