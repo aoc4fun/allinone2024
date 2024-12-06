@@ -1,5 +1,3 @@
-import itertools
-
 sample="""47|53
 97|13
 97|61
