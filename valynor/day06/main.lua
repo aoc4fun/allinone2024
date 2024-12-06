@@ -1,189 +1,185 @@
-local current_color = {1, 1, 1, 1}
-local seconds=0
-local animation=nil
-local dices = {}
-love.graphics.setDefaultFilter( "nearest","nearest" )
-Timer = require 'libraries/hump/timer'
-Class = require "libraries/classic/classic"
+local Timer = require "libraries.hump.timer"
+-- Representations
+local guard = nil
+local obstacles = {}
+local travelHistory = {}
 
-function PrintTable(_table)
-  for key, value in pairs(_table) do
-    print(key .. ": " .. tostring(value))
-  end
-end
+-- Grid size and cell size for display
+local cellSize = 32  -- Size of each cell in pixels
+local gridWidth, gridHeight = 10, 10  -- Map dimensions
+local mapData = {
+    "....#.....",
+    ".........#",
+    "..........",
+    "..#.......",
+    ".......#..",
+    "..........",
+    ".#..^.....",
+    "........#.",
+    "#.........",
+    "......#..."
+}
 
-local cursorX, cursorY -- Position of the '^'
-local direction = {dx = -1, dy = 0} -- initial direction is up
-local steps = 0
-local done = false
-local timeAccumulator = 0
-local moveInterval = 0.005 -- move every 1 second
+-- Grid size and cell size for display
+local cellSize = 48  -- Size of each cell in pixels
+local mapData = {}  -- Will be loaded from an external file
+local gridWidth, gridHeight = 0, 0  -- Map dimensions (updated dynamically)
 
--- Function to turn direction right
-local function turnRight(dir)
-    -- Up (-1,0), Right(0,1), Down(1,0), Left(0,-1)
-    if dir.dx == -1 and dir.dy == 0 then
-        -- Up -> Right
-        dir.dx, dir.dy = 0, 1
-    elseif dir.dx == 0 and dir.dy == 1 then
-        -- Right -> Down
-        dir.dx, dir.dy = 1, 0
-    elseif dir.dx == 1 and dir.dy == 0 then
-        -- Down -> Left
-        dir.dx, dir.dy = 0, -1
-    elseif dir.dx == 0 and dir.dy == -1 then
-        -- Left -> Up
-        dir.dx, dir.dy = -1, 0
-    end
-end
-
-
-function love.load()
-    love.window.setVSync( false )
-  local name, version, vendor, device = love.graphics.getRendererInfo( )
-  print("Renderer : ".. name .. "\nVersion: " .. version .. "\nVendor: " .. vendor .. "\nDevice: ".. device)
-  local features = love.graphics.getSupported( )
-  print("----------------------- Features")
-  PrintTable(features)
-  local limits = love.graphics.getSystemLimits( )
-  print("----------------------- Limits")
-  PrintTable(limits)
-  local scale = love.graphics.getDPIScale( )
-  print("----------------------- HDPI")
-  print("HDPI Scale : " .. scale)
-  Gametimer = Timer()
---  local f, error = contents, size = love.filesystem.read("sample.txt")
+-- Function to load the map from an external file
+local function loadMapFromFile(filename)
     mapData = {}
-    for line in love.filesystem.lines("06.txt") do
+    for line in love.filesystem.lines(filename) do
         table.insert(mapData, line)
     end
-    cellSize = 10       -- Taille de la cellule
-    rectSize = 8        -- Taille du rectangle à l'intérieur de la cellule
-    margin = (cellSize - rectSize) / 2  -- Pour centrer le rectangle dans la cellule
-    -- Find the '^' in the map
+    gridWidth = #mapData[1]  -- Assuming all rows are of equal length
+    gridHeight = #mapData
+end
+
+-- Parse the map into the new representation
+local function parseMap()
+    guard = nil
+    obstacles = {}
+    travelHistory = {}
+
     for r, line in ipairs(mapData) do
-        local c = line:find("%^")
-        if c then
-            cursorY = r
-            cursorX = c
-            -- Replace '^' with '.' since it's just a marker
-            local before = line:sub(1, c-1)
-            local after = line:sub(c+1)
-            mapData[r] = before .. "." .. after
-            break
-        end
-    end
-end
-
-local function isOutsideMap(x, y)
-    return y < 1 or y > #mapData or x < 1 or x > #mapData[1]
-end
-
-function love.draw()
-  local stats = love.graphics.getStats()
-  local r, g, b, a = love.graphics.getColor( )
-  love.graphics.setColor( 0,0,0 )
---  love.graphics.print(str1, 10, 10)
-  --love.graphics.print(str2, 10, 30)
-    -- Parcourir les lignes et les colonnes de la carte
-    for rowIndex, line in ipairs(mapData) do
-        for colIndex = 1, #line do
-            local char = line:sub(colIndex, colIndex)
-
-            local x = (colIndex - 1) * cellSize
-            local y = (rowIndex - 1) * cellSize
-
-            if char == '.' then
-                love.graphics.setColor(0, 0, 1)
-                love.graphics.rectangle("fill", x + margin, y + margin, rectSize, rectSize)
-            elseif char == '#' then
-                love.graphics.setColor(1, 0, 0)
-                love.graphics.rectangle("fill", x + margin, y + margin, rectSize, rectSize)
-            else
-                love.graphics.setColor(1, 1, 1)
-                local cell = mapData[rowIndex]:sub(colIndex, colIndex)
-                local line = mapData[rowIndex]
-                -- nextX est la position de la colonne à modifier
-                mapData[cursorY] = line:sub(1, cursorX - 1) .. "5" .. line:sub(cursorX + 1)
-                love.graphics.rectangle("fill", x + margin, y + 5, rectSize, rectSize)
+        for c = 1, #line do
+            local cell = line:sub(c, c)
+            if cell == "^" then
+                guard = {x = c, y = r, direction = "^"} -- Store guard position and direction
+            elseif cell == "#" then
+                table.insert(obstacles, {x = c, y = r}) -- Store obstacle position
             end
         end
     end
+end
 
-    -- Draw the cursor
-    if not done then
-        local cx = (cursorX - 1) * cellSize
-        local cy = (cursorY - 1) * cellSize
-        love.graphics.setColor(0, 1, 0)
-        love.graphics.rectangle("fill", cx + margin, cy + margin, rectSize, rectSize)
+-- Parse the map into the new representation
+local function parseMap()
+    for r, line in ipairs(mapData) do
+        for c = 1, #line do
+            local cell = line:sub(c, c)
+            if cell == "^" then
+                guard = {x = c, y = r, direction = "^"} -- Store guard position and direction
+            elseif cell == "#" then
+                table.insert(obstacles, {x = c, y = r}) -- Store obstacle position
+            end
+        end
     end
+end
 
-    love.graphics.setColor(1, 1, 1)
-    if done then
-        love.graphics.print("Number of steps: " .. steps, 10, 10)
+-- Directions and their corresponding movements
+local directions = {
+    ["^"] = {dx = 0, dy = -1},
+    [">"] = {dx = 1, dy = 0},
+    ["v"] = {dx = 0, dy = 1},
+    ["<"] = {dx = -1, dy = 0}
+}
+
+-- Turn right (clockwise)
+local function turn_right(direction)
+    if direction == "^" then return ">" end
+    if direction == ">" then return "v" end
+    if direction == "v" then return "<" end
+    if direction == "<" then return "^" end
+end
+
+-- Check if a position is an obstacle
+local function is_obstacle(x, y)
+    for _, obs in ipairs(obstacles) do
+        if obs.x == x and obs.y == y then
+            return true
+        end
+    end
+    return false
+end
+
+-- Simulate one step of the guard's movement
+local function simulateGuard()
+    local entry = {x = guard.x, y = guard.y, size = 0}  -- Start with a size of 0
+    table.insert(travelHistory, entry)
+
+    -- Animate the size growth for this entry
+    Timer.tween(0.8, entry, {size = cellSize / 3}, "in-out-quad")
+
+    -- Calculate the next position
+    local dir = directions[guard.direction]
+    local nextX, nextY = guard.x + dir.dx, guard.y + dir.dy
+
+    -- Check if the guard encounters an obstacle or boundary
+    if nextX < 1 or nextY < 1 or nextY > gridHeight or nextX > gridWidth then
+        guard.x, guard.y = nextX, nextY
+        else
+        if is_obstacle(nextX, nextY) then
+            -- Turn right if blocked
+            guard.direction = turn_right(guard.direction)
+        else
+            guard.x, guard.y = nextX, nextY
+        end
     end
 end
 
-function love.keypressed(pressed_key)
-  if pressed_key == 'escape' then
-    love.event.quit()
-  end
+-- Love2D functions
+function love.load()
+    print("Save directory:", love.filesystem.getSaveDirectory())
+    recording=true
+    frameCounter = 0
+    -- Load the map from an external file
+    loadMapFromFile("sample.txt")  -- Replace "map.txt" with the name of your map file
+    parseMap()  -- Parse the map and initialize the representations
 end
 
-function love.mousereleased(x, y, button)
-
-end
-
-function love.mousepressed(x, y, button)
-
-end
-
-function love.mousemoved(x, y, dx, dy)
-
+-- Save the current frame
+local function saveFrame()
+    frameCounter = frameCounter + 1
+    local filename = string.format("frames/frame_%04d.png", frameCounter)
+    love.filesystem.createDirectory("frames")  -- Ensure the directory exists
+    love.graphics.captureScreenshot(function(imageData)
+        imageData:encode("png", filename)
+    end)
 end
 
 function love.update(dt)
-  Gametimer:update(dt)
-    if done then return end
-
-    timeAccumulator = timeAccumulator + dt
-    if timeAccumulator >= moveInterval then
-        timeAccumulator = timeAccumulator - moveInterval
-
-        -- Check next cell in the current direction
-        local nextX = cursorX + direction.dy
-        local nextY = cursorY + direction.dx
-        -- Note: careful with row/col indexing
-        -- Here, rowIndex = y, colIndex = x
-        -- We took cursorY as row, cursorX as column.
-        -- direction is defined as (dx,dy) with dx in row-direction, dy in col-direction:
-        -- dx changes rows (vertical), dy changes columns (horizontal)
-        -- So the next cell is (cursorY + dx, cursorX + dy).
-
-        nextY = cursorY + direction.dx
-        nextX = cursorX + direction.dy
-
-        if isOutsideMap(nextX, nextY) then
-            -- Outside map
-            done = true
-            print("Number of steps:", steps+1)
+    Timer.update(dt)
+    if recording then
+        simulateGuard()
+        if frameCounter < 200 then  -- Limit recording to 200 frames
+            saveFrame()
         else
-            local cell = mapData[nextY]:sub(nextX, nextX)
-            local line = mapData[cursorY]
-            -- nextX est la position de la colonne à modifier
-            mapData[cursorY] = line:sub(1, cursorX - 1) .. "0" .. line:sub(cursorX + 1)
-            if cell == '#' then
-                -- Turn right, don't move
-                turnRight(direction)
-            elseif cell == '.' then
-                -- Move forward
-                cursorX, cursorY = nextX, nextY
-                steps = steps + 1
-            else
-                -- If there are other chars, treat them as '.'
-                cursorX, cursorY = nextX, nextY
-            end
+            recording = false
+        end
+    end
+    -- Simulate the guard's movement periodically (e.g., every 0.2 seconds)
+    if not(guard.x < 1 or guard.y < 1 or guard.y > gridHeight or guard.x > gridWidth) then
+        if love.timer.getTime() % 0.1 < dt then
+            simulateGuard()
         end
     end
 end
 
+function love.draw()
+    -- Draw the grid
+    for r = 1, gridHeight do
+        for c = 1, gridWidth do
+            love.graphics.setColor(0.8, 0.8, 0.8) -- Light gray for empty cells
+            love.graphics.rectangle("line", (c - 1) * cellSize, (r - 1) * cellSize, cellSize, cellSize)
+        end
+    end
+
+    -- Draw obstacles
+    love.graphics.setColor(1, 0, 0) -- Red for obstacles
+    for _, obs in ipairs(obstacles) do
+        love.graphics.rectangle("fill", (obs.x - 1) * cellSize, (obs.y - 1) * cellSize, cellSize, cellSize)
+    end
+
+    -- Draw the guard
+    love.graphics.setColor(0, 0, 1) -- Blue for the guard
+    love.graphics.circle("fill", (guard.x - 1) * cellSize + cellSize / 2, (guard.y - 1) * cellSize + cellSize / 2, cellSize / 3)
+
+    -- Draw the travel history
+    love.graphics.setColor(0, 1, 0) -- Green for the travel path
+    -- Draw the travel history with animation
+    for _, entry in ipairs(travelHistory) do
+        love.graphics.setColor(1, 1-1/entry.size, 0) -- Green for the travel path
+        love.graphics.circle("fill", (entry.x - 1) * cellSize + cellSize / 2, (entry.y - 1) * cellSize + cellSize / 2, entry.size)
+    end
+end

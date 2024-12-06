@@ -1,6 +1,6 @@
 function love.conf(t)
-    t.window.width = 2000
-    t.window.height = 1500
+    t.window.width = 480
+    t.window.height = 480
     t.modules.joystick = false
     t.modules.physics = false
 
