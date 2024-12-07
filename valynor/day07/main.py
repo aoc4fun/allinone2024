@@ -16,30 +16,37 @@ with open("07.txt","r") as f:
 def parse_data(input_data):
     return [(line.split(":")[0],list(map(int, line.split(":")[1].split()))) for line in input_data.split("\n")]
 
-def compute_part1(result,data1,data2):
-    if len(data2)==0:
-        return data1==result
-    else:
-        return compute_part1(result,data1*data2[0],data2[1:]) or\
-            compute_part1(result,data1+data2[0],data2[1:])
 
-def compute_part2(result,data1,data2):
-    if len(data2)==0:
-        return data1==result
-    else:
-        return compute_part2(result,data1*data2[0],data2[1:]) or\
-            compute_part2(result,data1+data2[0],data2[1:]) or\
-            compute_part2(result,int(f"{str(data1)}{data2[0]}"),data2[1:])
+def compute(result, data, allow_concat=False):
+    def helper(current, remaining):
+        if not remaining:
+            return current == result
+        next_val = remaining[0]
+        rest = remaining[1:]
+
+        if helper(current * next_val, rest):
+            return True
+        if helper(current + next_val, rest):
+            return True
+
+        if allow_concat:
+            concat_val = int(str(current) + str(next_val))
+            if helper(concat_val, rest):
+                return True
+
+        return False
+
+    return helper(data[0], data[1:])
 
 
 def part1(lines):
-    return sum(int(d[0]) for d in lines if compute_part1(int(d[0]),d[1][0],d[1][1:]))
+    return sum(int(d[0]) for d in lines if compute(int(d[0]),d[1], False))
 
 def part2(lines):
-    return sum(int(d[0]) for d in lines if compute_part2(int(d[0]),d[1][0],d[1][1:]))
+    return sum(int(d[0]) for d in lines if compute(int(d[0]),d[1], True))
 
 assert_equal(part1(parse_data(sample)), 3749)
-print(part1(parse_data(input_data)))
+print(f"result part1 : {part1(parse_data(input_data))}")
 
 assert_equal(part2(parse_data(sample)), 11387)
-print(part2(parse_data(input_data)))
+print(f"result part1 : {part2(parse_data(input_data))}")
