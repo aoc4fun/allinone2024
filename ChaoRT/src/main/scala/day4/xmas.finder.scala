@@ -1,7 +1,6 @@
 import scala.annotation.tailrec
 import scala.util.matching.Regex
 import scala.io.Source
-import scala.util.matching.Regex
 
 enum Direction(x:Int,y:Int):
   val dx: Int = x
