@@ -97,7 +97,7 @@ class Day6 extends Puzzle {
       |.#..^.....
       |........#.
       |#.........
-      |......#...""".stripMargin.stripMargin.split("\\r?\\n").iterator
+      |......#...""".stripMargin.split("\\r?\\n").iterator
 
   def Puzzle1(l: Iterator[String]): Long = {
     var map = TwoDMap(l.toIndexedSeq)
