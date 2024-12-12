@@ -1,7 +1,7 @@
 import scala.io.Source
 
 trait Puzzle:
-  lazy val lines:Iterator[String] = Source.fromFile(s"..\\..\\ressources\\$name.txt").getLines()
+  lazy val lines:Iterator[String] = Source.fromFile(s"../../ressources/$name.txt").getLines()
 
   def Puzzle1Full() = Puzzle1(lines)
   def Puzzle2Full() = Puzzle2(lines)
